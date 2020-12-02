@@ -254,6 +254,7 @@ class Convertor():
         self.days = days
         self.include_location = include_location
         self.include_description = include_description
+        self.hashes = []
 
     def __call__(self, fh, fh_w):
         try:
@@ -289,6 +290,11 @@ class Convertor():
                     fh_w.write(u"* {}".format(summary))
                     if rec_event and self.RECUR_TAG:
                         fh_w.write(u" {}\n".format(self.RECUR_TAG))
+                    # prune duplicates
+                    current_hash = hash(summary) + hash(location) + hash(comp_start)
+                    if current_hash in self.hashes:
+                        continue
+                    self.hashes.append(current_hash)
                     fh_w.write(u"\n")
                     if isinstance(comp["DTSTART"].dt, datetime):
                         fh_w.write(u"  {}--{}\n".format(
