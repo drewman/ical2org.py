@@ -386,3 +386,6 @@ def main(ics_directory, org_file, email, days, timezone, include_location, inclu
     except IcalError as e:
         click.echo(str(e), err=True)
         raise click.Abort()
+
+if __name__ == "__main__":
+    main()
