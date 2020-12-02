@@ -242,7 +242,7 @@ class Convertor():
 
     # Do not change anything below
 
-    def __init__(self, days=90, tz=None, emails = [], include_location=True):
+    def __init__(self, days=90, tz=None, emails = [], include_location=True, include_description=True):
         """
         days: Window length in days (left & right from current time). Has
         to be positive.
@@ -253,6 +253,7 @@ class Convertor():
         self.tz = timezone(tz) if tz else get_localzone()
         self.days = days
         self.include_location = include_location
+        self.include_description = include_description
 
     def __call__(self, fh, fh_w):
         try:
@@ -278,7 +279,7 @@ class Convertor():
             else:
                 summary += " - " + location if location and self.include_location else ''
             description = None
-            if 'DESCRIPTION' in comp:
+            if self.include_description and 'DESCRIPTION' in comp:
                 description = '\n'.join(comp['DESCRIPTION'].to_ical()
                                         .decode("utf-8").split('\\n'))
                 description = description.replace('\\,', ',')
@@ -353,8 +354,14 @@ def print_timezones(ctx, param, value):
     default=True,
     help="Include the location (if present) in the headline. (Location is included by default).")
 @click.argument("ics_file", type=click.File("r", encoding="utf-8"))
+@click.option(
+    "--description/--no-description",
+    "include_description",
+    default=True,
+    help="Do not include the description")
+@click.argument("ics_directory", type=click.Path(exists=True, file_okay=False, dir_okay=True))
 @click.argument("org_file", type=click.File("w", encoding="utf-8"))
-def main(ics_file, org_file, email, days, timezone, include_location):
+def main(ics_directory, org_file, email, days, timezone, include_location, include_description):
     """Convert ICAL format into org-mode.
 
     Files can be set as explicit file name, or `-` for stdin or stdout::
@@ -367,7 +374,7 @@ def main(ics_file, org_file, email, days, timezone, include_location):
 
         $ cat in.ical | ical2orgpy - - > out.org
     """
-    convertor = Convertor(days, timezone, email, include_location)
+    convertor = Convertor(days, timezone, email, include_location, include_description)
     try:
         convertor(ics_file, org_file)
     except IcalError as e:
