@@ -6,6 +6,8 @@ from icalendar import Calendar
 from pytz import timezone, utc, all_timezones
 from tzlocal import get_localzone
 import click
+import glob
+import os
 
 def org_datetime(dt, tz):
     '''Timezone aware datetime to YYYY-MM-DD DayofWeek HH:MM str in localtime.
@@ -359,15 +361,25 @@ def print_timezones(ctx, param, value):
     "include_location",
     default=True,
     help="Include the location (if present) in the headline. (Location is included by default).")
-@click.argument("ics_file", type=click.File("r", encoding="utf-8"))
 @click.option(
     "--description/--no-description",
     "include_description",
     default=True,
     help="Do not include the description")
-@click.argument("ics_directory", type=click.Path(exists=True, file_okay=False, dir_okay=True))
+@click.option(
+    "--ics-file",
+    "-f",
+    default=None,
+    type=click.File("r", encoding="utf-8"),
+    help=".ics file to build org file from")
+@click.option(
+    "--cal",
+    "-c",
+    default=False,
+    is_flag=True,
+    help="Pull events from MacOS Calendar")
 @click.argument("org_file", type=click.File("w", encoding="utf-8"))
-def main(ics_directory, org_file, email, days, timezone, include_location, include_description):
+def main(ics_file, org_file, cal, email, days, timezone, include_location, include_description):
     """Convert ICAL format into org-mode.
 
     Files can be set as explicit file name, or `-` for stdin or stdout::
@@ -380,12 +392,21 @@ def main(ics_directory, org_file, email, days, timezone, include_location, inclu
 
         $ cat in.ical | ical2orgpy - - > out.org
     """
+    if not cal or ics_file:
+        raise RuntimeError("Either cal or ics_file option required")
     convertor = Convertor(days, timezone, email, include_location, include_description)
+    if cal:
+        ics_files = glob.glob(os.path.join(os.path.expanduser("~"), "Library/Calendars/**/**/Events/*.ics"))
+    else:
+        ics_files = [ics_file]
     try:
-        convertor(ics_file, org_file)
+        for ics_file in ics_files:
+            with open(ics_file, "r", encoding="utf-8") as f:
+                convertor(f, org_file)
     except IcalError as e:
         click.echo(str(e), err=True)
         raise click.Abort()
 
 if __name__ == "__main__":
     main()
+
